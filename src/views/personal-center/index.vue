@@ -6,7 +6,7 @@
         </div>
         <div class="userInfo">
             <div class="avator">
-                <img v-bind:src="'http://localhost:9200/managerUserInfo/getPicture?fileName='+this.info.picture">
+                <img v-bind:src="'http://q00p4epjw.bkt.clouddn.com/'+this.info.picture">
             </div>
             <div class="info">
                 <div class="basic">
@@ -28,11 +28,14 @@
                 <el-form-item label="头像" prop="picture">
                     <el-upload
                         class="avatar-uploader"
-                        action="https://jsonplaceholder.typicode.com/posts/"
+                        :action="domain"
+                        bucket="clideo"
                         :show-file-list="false"
                         :on-success="handleAvatarSuccess"
                         :before-upload="beforeAvatarUpload"
+                        :on-error="uploadError"
                         v-model="userinfo.picture"
+                        :data="postData"
                         accept="image/jpeg,image/png">
                         <img v-if="this.userinfo.picture" :src="this.userinfo.picture" class="avatar">
                         <i v-else class="el-icon-plus avatar-uploader-icon"></i>
@@ -88,6 +91,7 @@
 import axios from 'axios'
 import { Message } from 'element-ui'
 import { getToken } from '@/utils/auth' // 验权
+import { genUpToken } from '@/utils/qiniuToken'
 
 export default {
   inject: ['reload'],
@@ -107,6 +111,11 @@ export default {
       }
     }
     return {
+      postData: {},
+      bucketQuery: {
+        bucket: 'clideo'
+      },
+      domain: 'http://up-z2.qiniup.com',
       listLoading: false,
       isShowUpdateInfo: false,
       isShowUpdatePassword: false,
@@ -175,7 +184,7 @@ export default {
   },
   methods: {
     getInfo() {
-      axios.get('http://localhost:9200/managerUserInfo/getUserInfo?userId=' + getToken()).then(res => {
+      axios.get('http://118.31.102.1:9200/managerUserInfo/getUserInfo?userId=' + getToken()).then(res => {
         const info = res.data
         if (info.sex === '' || info.sex === null) {
           info.sex = '保密'
@@ -190,7 +199,7 @@ export default {
       this.isShowUpdateInfo = true
       this.userinfo = Object.assign({}, this.info)
       if (this.userinfo.picture !== '') {
-        this.userinfo.picture = 'http://localhost:9200/managerUserInfo/getPicture?fileName=' + this.userinfo.picture
+        this.userinfo.picture = 'http://q00p4epjw.bkt.clouddn.com/' + this.userinfo.picture
       }
     },
     handleUpdatePassword() {
@@ -216,7 +225,7 @@ export default {
           if (this.userinfo.file) {
             param.append('file', this.userinfo.file)
           }
-          axios.post('http://localhost:9200/managerUserInfo/updateUserInfo', param, config).then(() => {
+          axios.post('http://118.31.102.1:9200/managerUserInfo/updateUserInfo', param, config).then(() => {
             this.isShowUpdateInfo = false
             this.$notify({
               title: '成功',
@@ -239,7 +248,7 @@ export default {
     updatePassword() {
       this.$refs.updatePasswordForm.validate(valid => {
         if (valid) {
-          axios.post('http://localhost:9200/managerUserInfo/updatePassword', this.passwordinfo).then(() => {
+          axios.post('http://118.31.102.1:9200/managerUserInfo/updatePassword', this.passwordinfo).then(() => {
             this.isShowUpdatePassword = false
             this.$notify({
               title: '成功',
@@ -274,10 +283,25 @@ export default {
       if (!isLt2M) {
         this.$message.error('上传头像图片大小不能超过 2MB!')
       }
+      this.postData.name = file.name
+      this.postData.key = 'image/picture/' + file.name
       return isJPGOrPNG && isLt2M
+    },
+    uploadError(response) {
+      console.log(response)
     }
   },
   created() {
+    var token
+    var policy = {}
+    var bucketName = 'clideo'
+    var AK = 'qHZmqay_XNi5EezMzE6b4VpcAp4x2RG1gm-6xmBK'
+    var SK = '0Y2B5IgtX1BQQYnxV-TO3gnJsx-668-KM1yHRbiB'
+    var deadline = Math.round(new Date().getTime() / 1000) + 3600
+    policy.scope = bucketName
+    policy.deadline = deadline
+    token = genUpToken(AK, SK, policy)
+    this.postData.token = token
     this.getInfo()
   }
 }

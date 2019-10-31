@@ -2,7 +2,7 @@
   <div class="app-container">
     <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
       <el-form :inline="true">
-        <el-form-item>
+        <!-- <el-form-item>
           <el-select v-model="value" clearable placeholder="状态">
               <el-option
                 v-for="item in status"
@@ -11,9 +11,9 @@
                 :value="item.statusId">
               </el-option>
           </el-select>
-        </el-form-item>
-                <el-form-item >
-          <el-input placeholder="姓名" v-model="searchName"></el-input>
+        </el-form-item> -->
+        <el-form-item >
+          <el-input placeholder="ID,用户名,真实姓名" v-model="searchName" clearable @change="search"></el-input>
         </el-form-item>
         <el-form-item>
            <el-button type="primary" @click="doFilter()"><i class="el-icon-search"></i>搜索</el-button>
@@ -65,12 +65,12 @@
 
     <!-- 详细信息 -->
     <el-dialog title="详细信息" :visible.sync="isShowEditVisible">
-      <el-form label-width="80px" :model="detail" ref="dataForm">
+      <el-form label-width="80px" :model="detail" ref="dataForm" :rules="rules">
         <el-form-item label="ID" hidden>
           <el-input v-model="detail.id"></el-input>
         </el-form-item>
         <el-form-item label="头像">
-          <img v-bind:src="this.detail.picture" style="width: 5rem;height: 5rem">
+          <img v-bind:src="'http://q00p4epjw.bkt.clouddn.com/'+this.detail.picture" style="width: 5rem;height: 5rem">
         </el-form-item>
         <el-form-item label="用户名">
           <el-input v-model="detail.user_name" readonly></el-input>
@@ -90,7 +90,7 @@
         <el-form-item label="邮箱">
           <el-input v-model="detail.email" readonly></el-input>
         </el-form-item>
-        <el-form-item label="角色" v-model="detail.roleId">
+        <el-form-item label="角色" v-model="detail.roleId" prop="role">
          <el-select v-model="detail.roleId" placeholder="角色">
             <el-option v-for="item in status"
                        :label="item.role"
@@ -102,7 +102,7 @@
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="isShowEditVisible = false">取消</el-button>
-        <el-button type="primary" :loading="listLoading" @click="updateData" class="title1">审核通过</el-button>
+        <el-button type="primary" :loading="listLoading" @click="updateData('dataForm')" class="title1">审核通过</el-button>
       </div>
     </el-dialog>
 
@@ -136,7 +136,13 @@ export default {
   },
   data() {
     return {
+      rules: {
+        role: [
+          { required: true, message: '角色不可为空', trigger: 'blur' }
+        ]
+      },
       tableList: [],
+      all: [],
       listLoading: true,
       isShowEditVisible: false,
       deleteVisible: false,
@@ -168,6 +174,7 @@ export default {
   },
   created() {
     this.fetchData()
+    this.getAllData()
   },
   filters: {
     statusFilter(status) {
@@ -179,47 +186,63 @@ export default {
     }
   },
   methods: {
+    search() {
+      if (this.searchName === '') {
+        this.filterTableDataEnd = []
+        this.fetchData()
+      } else {
+        this.doFilter()
+      }
+    },
     fetchData() {
       this.listLoading = true
-      axios.get('http://localhost:9200/managerUser/getRegister?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
-        // const limit = 10
-        // const pageList = response.data.filter((item, index) => index < limit * this.page && index >= limit * (this.page - 1))
-        // console.log(pageList)
-        // this.total = response.data.length
-        // this.tableList = pageList
+      axios.get('http://118.31.102.1:9200/managerUser/getRegister?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
         this.total = response.data.total
         this.tableList = response.data.list
         this.listLoading = false
       }).catch((error) => {
         Message.error(error.response.data.message)
-        this.deleteVisible = false
+        this.listLoading = false
       })
-      axios.get('http://localhost:9200/role/getRoles').then(res => {
+      axios.get('http://118.31.102.1:9200/role/getAllRole').then(res => {
         this.status = res.data
       }).catch((error) => {
         Message.error(error.response.data.message)
-        this.deleteVisible = false
+      })
+    },
+    getAllData() {
+      axios.get('http://118.31.102.1:9200/managerUser/getAllRegister').then(res => {
+        this.all = res.data
+      }).catch((error) => {
+        Message.error(error.response.data.message)
       })
     },
     doFilter() {
+      this.filterTableDataEnd = []
       if (this.searchName === '') {
         this.fetchData()
         // this.$message.warning('查询条件不能为空！')
         return
       }
-      console.log(this.searchName)
-      // 每次手动将数据置空,因为会出现多次点击搜索情况
-      this.filterTableDataEnd = []
-      this.tableList.forEach((value, index) => {
-        if (value.cname) {
-          if (value.cname.indexOf(this.searchName) >= 0) {
+      this.all.forEach((value, index) => {
+        if (value.id) {
+          if (value.id.indexOf(this.searchName) >= 0) {
             this.filterTableDataEnd.push(value)
-            console.log(this.filterTableDataEnd)
+          }
+        }
+        if (value.user_name) {
+          if (value.user_name.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
+          }
+        }
+        if (value.real_name) {
+          if (value.real_name.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
           }
         }
       })
       // 页面数据改变重新统计数据数量和当前页
-      this.page = 1
+      // this.page = 1
       this.total = this.filterTableDataEnd.length
       // 渲染表格,根据值
       this.currentChangePage(this.filterTableDataEnd)
@@ -229,7 +252,7 @@ export default {
     },
     handleUpdate(row) {
       this.isShowEditVisible = true
-      axios.get('http://localhost:9200/managerUser/getManagerUserDetail?managerId=' + row.id).then(res => {
+      axios.get('http://118.31.102.1:9200/managerUser/getManagerUserDetail?managerId=' + row.id).then(res => {
         this.detail = Object.assign({}, res.data)
       }).catch((error) => {
         Message.error(error.response.data.message)
@@ -273,28 +296,24 @@ export default {
       console.log(row)
       row.status = status
     },
-    updateData() {
-      const tempData = Object.assign({}, this.temp)
-      console.log(tempData)
-      axios.post('http://localhost:9200/managerUser/pass', { managerId: this.detail.id, createdBy: this.name, roleId: this.detail.roleId }).then(() => {
-        // for (const v of this.tableList) {
-        //   if (v.uid === this.temp.uid) {
-        //     const index = this.tableList.indexOf(v)
-        //     this.tableList.splice(index, 1, this.temp)
-        //     break
-        //   }
-        // }
-        this.isShowEditVisible = false
-        this.$notify({
-          title: '成功',
-          message: '审核通过',
-          type: 'success',
-          duration: 2000
-        })
-        this.reload()
-      }).catch((error) => {
-        Message.error(error.response.data.message)
-        this.deleteVisible = false
+    updateData(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          axios.post('http://118.31.102.1:9200/managerUser/pass', { managerId: this.detail.id, createdBy: this.name, roleId: this.detail.roleId }).then(() => {
+            this.isShowEditVisible = false
+            this.$notify({
+              title: '成功',
+              message: '审核通过',
+              type: 'success',
+              duration: 2000
+            })
+            this.reload()
+          }).catch((error) => {
+            Message.error(error.response.data.message)
+          })
+        } else {
+          return false
+        }
       })
     },
     handleSizeChange(val) {
@@ -305,7 +324,11 @@ export default {
     handleCurrentChange(val) {
       this.page = val
       console.log(this.page)
-      this.fetchData()
+      if (this.filterTableDataEnd.length <= 0) {
+        this.fetchData()
+      } else {
+        this.currentChangePage(this.filterTableDataEnd)
+      }
     },
     currentChangePage(list) {
       let from = (this.page - 1) * this.pageSize

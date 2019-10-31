@@ -28,7 +28,7 @@ const user = {
     // 登录
     Login({ commit }, userInfo) {
       return new Promise((resolve, reject) => {
-        axios.post('http://localhost:9200/managerUser/login', userInfo).then(response => {
+        axios.post('http://118.31.102.1:9200/managerUser/login', userInfo).then(response => {
           const data = response.data
           setToken(data.id)
           commit('SET_TOKEN', data.id)
@@ -42,11 +42,11 @@ const user = {
     // 获取用户信息
     GetInfo({ commit, state }) {
       return new Promise((resolve, reject) => {
-        axios.get('http://localhost:9200/managerUserInfo/getUserInfo?userId=' + state.token).then(response => {
+        axios.get('http://118.31.102.1:9200/managerUserInfo/getUserInfo?userId=' + state.token).then(response => {
           const data = response.data
           commit('SET_NAME', data.real_name)
           commit('SET_AVATAR', data.picture)
-          axios.get('http://localhost:9200/role/getRoleByManagerId?managerId=' + state.token).then(res => {
+          axios.get('http://118.31.102.1:9200/role/getRoleByManagerId?managerId=' + state.token).then(res => {
             commit('SET_ROLES', res.data)
           })
           resolve(response)

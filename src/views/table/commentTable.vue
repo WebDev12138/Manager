@@ -2,7 +2,7 @@
   <div class="app-container">
     <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
       <el-form :inline="true">
-        <el-form-item>
+        <!-- <el-form-item>
           <el-select v-model="value" clearable placeholder="状态">
               <el-option
                 v-for="item in status"
@@ -11,9 +11,9 @@
                 :value="item.statusId">
               </el-option>
           </el-select>
-        </el-form-item>
-                <el-form-item >
-          <el-input placeholder="姓名" v-model="searchName"></el-input>
+        </el-form-item> -->
+        <el-form-item >
+          <el-input placeholder="分区,视频标题,视频描述,作者" v-model="searchName"  clearable @change="search"></el-input>
         </el-form-item>
         <el-form-item>
            <el-button type="primary" @click="doFilter()"><i class="el-icon-search"></i>搜索</el-button>
@@ -92,6 +92,9 @@
               </ul>
             </div>
           </div>
+          <div v-if="props.row.children.length === 0">
+            <span class="noContent">暂无评论</span>
+          </div>
         </template>
       </el-table-column>
       <el-table-column prop="comment_content" label="评论内容" min-width="150px">
@@ -133,6 +136,7 @@ export default {
   data() {
     return {
       tableList: [],
+      all: [],
       listLoading: true,
       commentLoading: true,
       isShowEditVisible: false,
@@ -160,6 +164,7 @@ export default {
   },
   created() {
     this.fetchData()
+    this.getAllData()
   },
   filters: {
     statusFilter(status) {
@@ -171,9 +176,17 @@ export default {
     }
   },
   methods: {
+    search() {
+      if (this.searchName === '') {
+        this.filterTableDataEnd = []
+        this.fetchData()
+      } else {
+        this.doFilter()
+      }
+    },
     fetchData() {
       this.listLoading = true
-      axios.get('http://localhost:9200/comment/getVideo?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
+      axios.get('http://118.31.102.1:9200/comment/getVideo?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
         this.total = response.data.total
         this.tableList = response.data.list
         this.listLoading = false
@@ -182,25 +195,44 @@ export default {
         this.listLoading = false
       })
     },
+    getAllData() {
+      axios.get('http://118.31.102.1:9200/comment/getAll').then(res => {
+        this.all = res.data.list
+      }).catch((error) => {
+        Message.error(error.response.data.message)
+      })
+    },
     doFilter() {
+      this.filterTableDataEnd = []
       if (this.searchName === '') {
-        this.fetchData()
         // this.$message.warning('查询条件不能为空！')
         return
       }
-      console.log(this.searchName)
-      // 每次手动将数据置空,因为会出现多次点击搜索情况
-      this.filterTableDataEnd = []
-      this.tableList.forEach((value, index) => {
-        if (value.cname) {
-          if (value.cname.indexOf(this.searchName) >= 0) {
+      this.all.forEach((value, index) => {
+        if (value.partition_name) {
+          if (value.partition_name.indexOf(this.searchName) >= 0) {
             this.filterTableDataEnd.push(value)
-            console.log(this.filterTableDataEnd)
           }
         }
+        if (value.video_title) {
+          if (value.video_title.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
+          }
+        }
+        if (value.video_describe) {
+          if (value.video_describe.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
+          }
+        }
+        if (value.author) {
+          if (value.author.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
+          }
+        }
+        console.log(this.filterTableDataEnd)
       })
       // 页面数据改变重新统计数据数量和当前页
-      this.page = 1
+      // this.page = 1
       this.total = this.filterTableDataEnd.length
       // 渲染表格,根据值
       this.currentChangePage(this.filterTableDataEnd)
@@ -209,13 +241,13 @@ export default {
       console.log(e.target.innerText)
     },
     CommentData() {
-      axios.get('http://localhost:9200/comment/getCommentNumber?videoId=' + this.rowId).then(res => {
+      axios.get('http://118.31.102.1:9200/comment/getCommentNumber?videoId=' + this.rowId).then(res => {
         this.commentTotal = res.data
       }).catch((error) => {
         Message.error(error.response.data.message)
         this.commentLoading = false
       })
-      axios.get('http://localhost:9200/comment/getComment?videoId=' + this.rowId + '&pageNum=' + this.commentPage + '&pageSize=' + this.pageSize).then(res => {
+      axios.get('http://118.31.102.1:9200/comment/getComment?videoId=' + this.rowId + '&pageNum=' + this.commentPage + '&pageSize=' + this.pageSize).then(res => {
         this.comment = res.data.list
         this.commentLoading = false
       }).catch((error) => {
@@ -257,7 +289,7 @@ export default {
       })
     },
     handleModifyStatus(row, status) {
-      axios.post('http://localhost:9200/comment/manage', { commentId: row.id, forbidden: status }).then(() => {
+      axios.post('http://118.31.102.1:9200/comment/manage', { commentId: row.id, forbidden: status }).then(() => {
         row.forbidden = status
         this.$message({
           message: '操作成功',
@@ -290,7 +322,11 @@ export default {
     handleCurrentChange(val) {
       this.page = val
       console.log(this.page)
-      this.fetchData()
+      if (this.filterTableDataEnd.length <= 0) {
+        this.fetchData()
+      } else {
+        this.currentChangePage(this.filterTableDataEnd)
+      }
     },
     handleCommentSizeChange(val) {
       this.commentPage = val
@@ -351,6 +387,7 @@ export default {
   }
   .time {color: #808080;font-size: 12px;}
   .comments {float: right; color: #808080;font-size: 12px;}
+  .noContent {color: #808080;font-size: 12px;}
   .dyn-huifu {
       padding-top: 15px;
       border-top: solid 1px #d9d9d9;

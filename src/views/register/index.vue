@@ -16,10 +16,10 @@
             <el-input type="text" placeholder="请输入真实姓名" v-model="form.real_name" clearable/>
         </el-form-item>
         <el-form-item label="手机号" prop="phone">
-            <el-input type="text" placeholder="请输入手机号" v-model="form.phone" clearable/>
+            <el-input type="text" maxlength="11" placeholder="请输入手机号" v-model="form.phone" clearable/>
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
-            <el-input type="text" placeholder="请输入邮箱" v-model="form.email" clearable/>
+            <el-input type="email" placeholder="请输入邮箱" v-model="form.email" clearable/>
         </el-form-item>
         <el-form-item>
             <el-button type="primary" v-on:click="onSubmit('registerForm')">注册</el-button>
@@ -37,7 +37,7 @@ export default {
   name: 'Register',
   data() {
     const validatePass = (rule, value, callback) => {
-      axios.get('http://localhost:9200/managerUser/userExist?userName=' + value).then(res => {
+      axios.get('http://118.31.102.1:9200/managerUser/userExist?userName=' + value).then(res => {
         if (res.data) {
           callback(new Error('用户名已存在'))
         } else {
@@ -50,6 +50,14 @@ export default {
         callback()
       } else {
         callback(new Error('密码不一致'))
+      }
+    }
+    const checkPhone = (rule, value, callback) => {
+      const reg = /^((13[0-9])|(14[5|7])|(15([0-3]|[5-9]))|(17[013678])|(18[0,5-9]))\d{8}$/
+      if (reg.test(value)) {
+        callback()
+      } else {
+        return callback(new Error('请输入正确的手机号'))
       }
     }
     return {
@@ -82,10 +90,12 @@ export default {
         ],
         phone: [
           { required: true, message: '手机号不可为空', trigger: 'blur' },
-          { min: 11, max: 11, message: '长度必须是 11 个字符', trigger: 'blur' }
+          { min: 11, max: 11, message: '长度必须是 11 个字符', trigger: 'blur' },
+          { validator: checkPhone, trigger: ['blur', 'change'] }
         ],
         email: [
-          { required: true, message: '邮箱不可为空', trigger: 'blur' }
+          { required: true, message: '邮箱不可为空', trigger: 'blur' },
+          { type: 'email', message: '请输入正确的邮箱地址', trigger: ['blur', 'change'] }
         ]
       }
     }
@@ -94,7 +104,13 @@ export default {
     onSubmit(formName) {
       this.$refs.registerForm.validate(valid => {
         if (valid) {
-          axios.post('http://localhost:9200/managerUser/register', this.form).then(() => {
+          axios.post('http://118.31.102.1:9200/managerUser/register', this.form).then(() => {
+            this.$notify({
+              title: '成功',
+              message: '注册成功',
+              type: 'success',
+              duration: 2000
+            })
             this.$router.push({ path: '/login' })
           }).catch((error) => {
             Message.error(error.response.data.message)

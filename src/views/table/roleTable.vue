@@ -2,7 +2,7 @@
   <div class="app-container">
     <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
       <el-form :inline="true">
-        <el-form-item>
+        <!-- <el-form-item>
           <el-select v-model="value" clearable placeholder="状态">
               <el-option
                 v-for="item in status"
@@ -11,9 +11,9 @@
                 :value="item.statusId">
               </el-option>
           </el-select>
-        </el-form-item>
-                <el-form-item >
-          <el-input placeholder="姓名" v-model="searchName"></el-input>
+        </el-form-item> -->
+        <el-form-item >
+          <el-input placeholder="ID,角色,权限" v-model="searchName" clearable @change="search"></el-input>
         </el-form-item>
         <el-form-item>
            <el-button type="primary" @click="doFilter()"><i class="el-icon-search"></i>搜索</el-button>
@@ -152,6 +152,7 @@ export default {
         ]
       },
       tableList: [],
+      all: [],
       listLoading: true,
       isShowAddVisible: false,
       isShowUpdateVisible: false,
@@ -194,6 +195,7 @@ export default {
   },
   created() {
     this.fetchData()
+    this.getAllData()
   },
   filters: {
     statusFilter(status) {
@@ -205,14 +207,17 @@ export default {
     }
   },
   methods: {
+    search() {
+      if (this.searchName === '') {
+        this.filterTableDataEnd = []
+        this.fetchData()
+      } else {
+        this.doFilter()
+      }
+    },
     fetchData() {
       this.listLoading = true
-      axios.get('http://localhost:9200/role/getRole?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
-        // const limit = 10
-        // const pageList = response.data.filter((item, index) => index < limit * this.page && index >= limit * (this.page - 1))
-        // console.log(pageList)
-        // this.total = response.data.length
-        // this.tableList = pageList
+      axios.get('http://118.31.102.1:9200/role/getRole?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
         this.total = response.data.total
         const list = response.data.list
         for (let index = 0; index < list.length; index++) {
@@ -222,28 +227,42 @@ export default {
         this.listLoading = false
       }).catch((error) => {
         Message.error(error.response.data.message)
-        this.deleteVisible = false
+        this.listLoading = false
+      })
+    },
+    getAllData() {
+      axios.get('http://118.31.102.1:9200/role/getAllRole').then(res => {
+        this.all = res.data
+      }).catch((error) => {
+        Message.error(error.response.data.message)
       })
     },
     doFilter() {
+      this.filterTableDataEnd = []
       if (this.searchName === '') {
         this.fetchData()
         // this.$message.warning('查询条件不能为空！')
         return
       }
-      console.log(this.searchName)
-      // 每次手动将数据置空,因为会出现多次点击搜索情况
-      this.filterTableDataEnd = []
-      this.tableList.forEach((value, index) => {
-        if (value.cname) {
-          if (value.cname.indexOf(this.searchName) >= 0) {
+      this.all.forEach((value, index) => {
+        if (value.id) {
+          if (value.id.indexOf(this.searchName) >= 0) {
             this.filterTableDataEnd.push(value)
-            console.log(this.filterTableDataEnd)
+          }
+        }
+        if (value.role) {
+          if (value.role.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
+          }
+        }
+        if (value.type) {
+          if (value.type.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
           }
         }
       })
       // 页面数据改变重新统计数据数量和当前页
-      this.page = 1
+      // this.page = 1
       this.total = this.filterTableDataEnd.length
       // 渲染表格,根据值
       this.currentChangePage(this.filterTableDataEnd)
@@ -263,7 +282,7 @@ export default {
       // console.log(row)
     },
     submitDelete() {
-      axios.delete('http://localhost:9200/role/deleteRole?roleId=' + this.delete.id).then(() => {
+      axios.delete('http://118.31.102.1:9200/role/deleteRole?roleId=' + this.delete.id).then(() => {
         this.deleteVisible = false
         this.$notify({
           title: '成功',
@@ -304,7 +323,7 @@ export default {
     addData(formName) {
       this.$refs[formName].validate(valid => {
         if (valid) {
-          axios.post('http://localhost:9200/role/addRole', this.add).then(() => {
+          axios.post('http://118.31.102.1:9200/role/addRole', this.add).then(() => {
             this.isShowEditVisible = false
             this.$notify({
               title: '成功',
@@ -325,7 +344,7 @@ export default {
     updateData(formName) {
       this.$refs[formName].validate(valid => {
         if (valid) {
-          axios.post('http://localhost:9200/role/updateRole', { id: this.update.id, role: this.update.role, type: this.update.type === '普通权限' ? '0' : this.update.type === '最高权限' ? '1' : this.update.type }).then(() => {
+          axios.post('http://118.31.102.1:9200/role/updateRole', { id: this.update.id, role: this.update.role, type: this.update.type === '普通权限' ? '0' : this.update.type === '最高权限' ? '1' : this.update.type }).then(() => {
             this.isShowEditVisible = false
             this.$notify({
               title: '成功',
@@ -351,7 +370,11 @@ export default {
     handleCurrentChange(val) {
       this.page = val
       console.log(this.page)
-      this.fetchData()
+      if (this.filterTableDataEnd.length <= 0) {
+        this.fetchData()
+      } else {
+        this.currentChangePage(this.filterTableDataEnd)
+      }
     },
     currentChangePage(list) {
       let from = (this.page - 1) * this.pageSize

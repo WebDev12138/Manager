@@ -23,9 +23,9 @@ export default {
   },
   methods: {
     getNavData() {
-      axios.get('http://localhost:9200/role/getRoleIdByManagerId?managerId=' + getToken()).then(response => {
+      axios.get('http://118.31.102.1:9200/role/getRoleIdByManagerId?managerId=' + getToken()).then(response => {
         this.roleId = response.data
-        axios.get('http://localhost:9200/navigation/get?roleId=' + this.roleId).then(response => {
+        axios.get('http://118.31.102.1:9200/navigation/get?roleId=' + this.roleId).then(response => {
           this.menu = response.data
         })
       })

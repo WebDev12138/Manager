@@ -2,7 +2,7 @@
   <div class="app-container">
     <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
       <el-form :inline="true">
-        <el-form-item>
+        <!-- <el-form-item>
           <el-select v-model="value" clearable placeholder="状态">
               <el-option
                 v-for="item in status"
@@ -11,9 +11,9 @@
                 :value="item.statusId">
               </el-option>
           </el-select>
-        </el-form-item>
-                <el-form-item >
-          <el-input placeholder="姓名" v-model="searchName"></el-input>
+        </el-form-item> -->
+        <el-form-item >
+          <el-input placeholder="管理员ID,审核人" v-model="searchName" clearable @change="search"></el-input>
         </el-form-item>
         <el-form-item>
            <el-button type="primary" @click="doFilter()"><i class="el-icon-search"></i>搜索</el-button>
@@ -73,6 +73,7 @@ export default {
   data() {
     return {
       tableList: [],
+      all: [],
       listLoading: true,
       isShowEditVisible: false,
       deleteVisible: false,
@@ -101,6 +102,7 @@ export default {
   },
   created() {
     this.fetchData()
+    this.getAllData()
   },
   filters: {
     statusFilter(status) {
@@ -112,15 +114,17 @@ export default {
     }
   },
   methods: {
+    search() {
+      if (this.searchName === '') {
+        this.filterTableDataEnd = []
+        this.fetchData()
+      } else {
+        this.doFilter()
+      }
+    },
     fetchData() {
       this.listLoading = true
-      axios.post('http://localhost:9200/passLog/managerPassLog', { pageNum: this.pageSize, pageSize: this.pageSize }).then(response => {
-        // const limit = 10
-        // const pageList = response.data.filter((item, index) => index < limit * this.page && index >= limit * (this.page - 1))
-        // console.log(pageList)
-        // this.total = response.data.length
-        // this.tableList = pageList
-        // this.listLoading = false
+      axios.post('http://118.31.102.1:9200/passLog/managerPassLog', { pageNum: this.pageSize, pageSize: this.pageSize }).then(response => {
         this.total = response.data.total
         this.tableList = response.data.list
         this.listLoading = false
@@ -129,25 +133,34 @@ export default {
         this.deleteVisible = false
       })
     },
+    getAllData() {
+      axios.get('http://118.31.102.1:9200/passLog/getAllManager').then(res => {
+        this.all = res.data
+      }).catch((error) => {
+        Message.error(error.response.data.message)
+      })
+    },
     doFilter() {
+      this.filterTableDataEnd = []
       if (this.searchName === '') {
         this.fetchData()
         // this.$message.warning('查询条件不能为空！')
         return
       }
-      console.log(this.searchName)
-      // 每次手动将数据置空,因为会出现多次点击搜索情况
-      this.filterTableDataEnd = []
-      this.tableList.forEach((value, index) => {
-        if (value.cname) {
-          if (value.cname.indexOf(this.searchName) >= 0) {
+      this.all.forEach((value, index) => {
+        if (value.manager_id) {
+          if (value.manager_id.indexOf(this.searchName) >= 0) {
             this.filterTableDataEnd.push(value)
-            console.log(this.filterTableDataEnd)
+          }
+        }
+        if (value.created_by) {
+          if (value.created_by.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
           }
         }
       })
       // 页面数据改变重新统计数据数量和当前页
-      this.page = 1
+      // this.page = 1
       this.total = this.filterTableDataEnd.length
       // 渲染表格,根据值
       this.currentChangePage(this.filterTableDataEnd)
@@ -223,7 +236,11 @@ export default {
     handleCurrentChange(val) {
       this.page = val
       console.log(this.page)
-      this.fetchData()
+      if (this.filterTableDataEnd.length <= 0) {
+        this.fetchData()
+      } else {
+        this.currentChangePage(this.filterTableDataEnd)
+      }
     },
     currentChangePage(list) {
       let from = (this.page - 1) * this.pageSize

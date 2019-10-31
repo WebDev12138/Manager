@@ -3,7 +3,7 @@
     <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
       <el-form :inline="true">
         <el-form-item>
-          <el-select v-model="value" clearable placeholder="状态">
+          <el-select v-model="value" clearable placeholder="状态" @change="statusSearch">
               <el-option
                 v-for="item in status"
                 :key="item.statusId"
@@ -12,8 +12,8 @@
               </el-option>
           </el-select>
         </el-form-item>
-                <el-form-item >
-          <el-input placeholder="姓名" v-model="searchName"></el-input>
+        <el-form-item >
+          <el-input placeholder="管理员ID,用户名,真实姓名" v-model="searchName" clearable @change="search"></el-input>
         </el-form-item>
         <el-form-item>
            <el-button type="primary" @click="doFilter()"><i class="el-icon-search"></i>搜索</el-button>
@@ -70,7 +70,7 @@
           <el-input v-model="detail.id"></el-input>
         </el-form-item>
         <el-form-item label="头像">
-          <img v-bind:src="'http://localhost:9200/managerUserInfo/getPicture?fileName='+this.detail.picture" style="width: 5rem;height: 5rem">
+          <img v-bind:src="'http://q00p4epjw.bkt.clouddn.com/'+this.detail.picture" style="width: 5rem;height: 5rem">
         </el-form-item>
         <el-form-item label="用户名">
           <el-input v-model="detail.user_name" readonly></el-input>
@@ -103,7 +103,7 @@
           <el-input v-model="pass.id"></el-input>
         </el-form-item>
         <el-form-item label="头像" prop="picture">
-          <img v-bind:src="'http://localhost:9200/managerUserInfo/getPicture?fileName='+this.detail.picture" style="width: 5rem;height: 5rem">
+          <img v-bind:src="'http://q00p4epjw.bkt.clouddn.com/'+this.detail.picture" style="width: 5rem;height: 5rem">
           <el-button @click="pass.picture = 'image/picture/default.jpg'">默认</el-button>
         </el-form-item>
         <el-form-item label="性别" prop="sex">
@@ -165,6 +165,7 @@ export default {
         ]
       },
       tableList: [],
+      all: [],
       listLoading: true,
       isShowEditVisible: false,
       isShowPassVisible: false,
@@ -198,10 +199,10 @@ export default {
       pageSize: 5,
       status: [
         {
-          statusId: 1,
+          statusId: '启用',
           label: '启用'
         }, {
-          statusId: 0,
+          statusId: '禁用',
           label: '禁用'
         }
       ],
@@ -212,6 +213,7 @@ export default {
   },
   created() {
     this.fetchData()
+    this.getAllData()
   },
   filters: {
     statusFilter(status) {
@@ -223,41 +225,125 @@ export default {
     }
   },
   methods: {
+    search() {
+      if (this.searchName === '') {
+        if (this.value != '') {
+          this.statusSearch()
+        } else {
+          this.filterTableDataEnd = []
+          this.fetchData()
+        }
+      } else {
+        if (this.value === '') {
+          this.doFilter()
+        } else {
+          this.filterTableDataEnd = []
+          this.all.forEach((value, index) => {
+            if ((this.value === '启用' && value.forbidden === '1') || (this.value === '禁用' && value.forbidden === '0')) {
+              this.filterTableDataEnd.push(value)
+            }
+          })
+          const list = this.filterTableDataEnd
+          this.filterTableDataEnd = []
+          list.forEach((value, index) => {
+            if (value.id) {
+              if (value.id.indexOf(this.searchName) >= 0) {
+                this.filterTableDataEnd.push(value)
+              }
+            }
+            if (value.user_name) {
+              if (value.user_name.indexOf(this.searchName) >= 0) {
+                this.filterTableDataEnd.push(value)
+              }
+            }
+            if (value.real_name) {
+              if (value.real_name.indexOf(this.searchName) >= 0) {
+                this.filterTableDataEnd.push(value)
+              }
+            }
+          })
+          // this.page = 1
+          this.total = this.filterTableDataEnd.length
+          // 渲染表格,根据值
+          this.currentChangePage(this.filterTableDataEnd)
+        }
+      }
+    },
+    statusSearch() {
+      if (this.value === '') {
+        this.search()
+      } else {
+        if (this.filterTableDataEnd.length <= 0 || this.searchName === '') {
+          this.filterTableDataEnd = []
+          this.all.forEach((value, index) => {
+            if ((this.value === '启用' && value.forbidden === '1') || (this.value === '禁用' && value.forbidden === '0')) {
+              this.filterTableDataEnd.push(value)
+            }
+          })
+          // 页面数据改变重新统计数据数量和当前页
+          // this.page = 1
+          this.total = this.filterTableDataEnd.length
+          // 渲染表格,根据值
+          this.currentChangePage(this.filterTableDataEnd)
+        } else {
+          const list = this.filterTableDataEnd
+          this.filterTableDataEnd = []
+          list.forEach((value, index) => {
+            if ((this.value === '启用' && value.forbidden === '1') || (this.value === '禁用' && value.forbidden === '0')) {
+              this.filterTableDataEnd.push(value)
+            }
+          })
+          // this.page = 1
+          this.total = this.filterTableDataEnd.length
+          // 渲染表格,根据值
+          this.currentChangePage(this.filterTableDataEnd)
+        }
+      }
+    },
     fetchData() {
       this.listLoading = true
-      axios.get('http://localhost:9200/managerUser/getManagerUser?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
-        // const limit = 10
-        // const pageList = response.data.filter((item, index) => index < limit * this.page && index >= limit * (this.page - 1))
-        // console.log(pageList)
-        // this.total = response.data.length
-        // this.tableList = pageList
+      axios.get('http://118.31.102.1:9200/managerUser/getManagerUser?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
         this.total = response.data.total
         this.tableList = response.data.list
         this.listLoading = false
       }).catch((error) => {
         Message.error(error.response.data.message)
-        this.deleteVisible = false
+        this.listLoading = false
+      })
+    },
+    getAllData() {
+      axios.get('http://118.31.102.1:9200/managerUser/getAllManager').then(res => {
+        this.all = res.data
+      }).catch((error) => {
+        Message.error(error.response.data.message)
       })
     },
     doFilter() {
+      this.filterTableDataEnd = []
       if (this.searchName === '') {
         this.fetchData()
         // this.$message.warning('查询条件不能为空！')
         return
       }
-      console.log(this.searchName)
-      // 每次手动将数据置空,因为会出现多次点击搜索情况
-      this.filterTableDataEnd = []
-      this.tableList.forEach((value, index) => {
-        if (value.cname) {
-          if (value.cname.indexOf(this.searchName) >= 0) {
+      this.all.forEach((value, index) => {
+        if (value.id) {
+          if (value.id.indexOf(this.searchName) >= 0) {
             this.filterTableDataEnd.push(value)
-            console.log(this.filterTableDataEnd)
+          }
+        }
+        if (value.user_name) {
+          if (value.user_name.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
+          }
+        }
+        if (value.real_name) {
+          if (value.real_name.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
           }
         }
       })
       // 页面数据改变重新统计数据数量和当前页
-      this.page = 1
+      // this.page = 1
       this.total = this.filterTableDataEnd.length
       // 渲染表格,根据值
       this.currentChangePage(this.filterTableDataEnd)
@@ -267,7 +353,7 @@ export default {
     },
     handleUpdate(row) {
       this.isShowEditVisible = true
-      axios.get('http://localhost:9200/managerUser/getManagerUserDetail?managerId=' + row.id).then(res => {
+      axios.get('http://118.31.102.1:9200/managerUser/getManagerUserDetail?managerId=' + row.id).then(res => {
         this.detail = Object.assign({}, res.data)
       }).catch((error) => {
         Message.error(error.response.data.message)
@@ -304,12 +390,13 @@ export default {
       })
     },
     handleModifyStatus(row, status) {
-      axios.post('http://localhost:9200/managerUser/manage', { managerId: row.id, forbidden: status }).then(() => {
+      axios.post('http://118.31.102.1:9200/managerUser/manage', { managerId: row.id, forbidden: status }).then(() => {
         row.forbidden = status
         this.$message({
           message: '操作成功',
           type: 'success'
         })
+        this.reload()
       }).catch((error) => {
         Message.error(error.response.data.message)
         this.deleteVisible = false
@@ -327,7 +414,7 @@ export default {
     updateData(formName) {
       this.$refs[formName].validate((valid) => {
         if (valid) {
-          axios.post('http://localhost:9200/managerUser/editManagerInfo', this.pass).then(() => {
+          axios.post('http://118.31.102.1:9200/managerUser/editManagerInfo', this.pass).then(() => {
             this.isShowPassVisible = false
             this.$notify({
               title: '成功',
@@ -352,7 +439,11 @@ export default {
     handleCurrentChange(val) {
       this.page = val
       console.log(this.page)
-      this.fetchData()
+      if (this.filterTableDataEnd.length <= 0) {
+        this.fetchData()
+      } else {
+        this.currentChangePage(this.filterTableDataEnd)
+      }
     },
     currentChangePage(list) {
       let from = (this.page - 1) * this.pageSize

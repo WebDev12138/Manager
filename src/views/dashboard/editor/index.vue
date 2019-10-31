@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard-editor-container">
     <div class=" clearfix">
-      <pan-thumb style="float: left" :image="'http://localhost:9200/managerUserInfo/getPicture?fileName='+avatar"> 你的权限:
+      <pan-thumb style="float: left" :image="'http://q00p4epjw.bkt.clouddn.com/'+avatar"> 你的权限:
         <span class="pan-info-roles" :key='item' v-for="item in roles">{{item}}</span>
       </pan-thumb>
       <div class="info-container">

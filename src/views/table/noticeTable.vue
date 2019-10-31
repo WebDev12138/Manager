@@ -3,7 +3,7 @@
     <el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
       <el-form :inline="true">
         <el-form-item>
-          <el-select v-model="value" clearable placeholder="状态">
+          <el-select v-model="value" clearable placeholder="状态" @change="statusSearch">
               <el-option
                 v-for="item in status"
                 :key="item.statusId"
@@ -12,8 +12,8 @@
               </el-option>
           </el-select>
         </el-form-item>
-                <el-form-item >
-          <el-input placeholder="姓名" v-model="searchName"></el-input>
+        <el-form-item >
+          <el-input placeholder="通知标题,创建人" v-model="searchName" clearable @change="search"></el-input>
         </el-form-item>
         <el-form-item>
            <el-button type="primary" @click="doFilter()"><i class="el-icon-search"></i>搜索</el-button>
@@ -122,7 +122,7 @@
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="isShowEditVisible = false">取消</el-button>
+        <el-button @click="isShowTimeVisible = false">取消</el-button>
         <el-button type="primary" :loading="listLoading" @click="updateTimeData('timeForm')" class="title1">确定</el-button>
       </div>
     </el-dialog>
@@ -188,6 +188,7 @@ export default {
         ]
       },
       tableList: [],
+      all: [],
       listLoading: true,
       isShowAddVisible: false,
       isShowUpdateVisible: false,
@@ -230,11 +231,11 @@ export default {
       pageSize: 5,
       status: [
         {
-          statusId: 1,
-          label: '启用'
+          statusId: '未过期',
+          label: '未过期'
         }, {
-          statusId: 0,
-          label: '禁用'
+          statusId: '已过期',
+          label: '已过期'
         }
       ],
       value: '',
@@ -244,6 +245,7 @@ export default {
   },
   created() {
     this.fetchData()
+    this.getAllData()
   },
   filters: {
     statusFilter(status) {
@@ -255,9 +257,79 @@ export default {
     }
   },
   methods: {
+    search() {
+      if (this.searchName === '') {
+        if (this.value != '') {
+          this.statusSearch()
+        } else {
+          this.filterTableDataEnd = []
+          this.fetchData()
+        }
+      } else {
+        if (this.value === '') {
+          this.doFilter()
+        } else {
+          this.filterTableDataEnd = []
+          this.all.forEach((value, index) => {
+            if ((this.value === '已过期' && value.time_out < this.currentTime) || (this.value === '未过期' && value.time_out >= this.currentTime)) {
+              this.filterTableDataEnd.push(value)
+            }
+          })
+          const list = this.filterTableDataEnd
+          this.filterTableDataEnd = []
+          list.forEach((value, index) => {
+            if (value.notice_title) {
+              if (value.notice_title.indexOf(this.searchName) >= 0) {
+                this.filterTableDataEnd.push(value)
+              }
+            }
+            if (value.created_by) {
+              if (value.created_by.indexOf(this.searchName) >= 0) {
+                this.filterTableDataEnd.push(value)
+              }
+            }
+          })
+          // this.page = 1
+          this.total = this.filterTableDataEnd.length
+          // 渲染表格,根据值
+          this.currentChangePage(this.filterTableDataEnd)
+        }
+      }
+    },
+    statusSearch() {
+      if (this.value === '') {
+        this.search()
+      } else {
+        if (this.filterTableDataEnd.length <= 0 || this.searchName === '') {
+          this.filterTableDataEnd = []
+          this.all.forEach((value, index) => {
+            if ((this.value === '已过期' && value.time_out < this.currentTime) || (this.value === '未过期' && value.time_out >= this.currentTime)) {
+              this.filterTableDataEnd.push(value)
+            }
+          })
+          // 页面数据改变重新统计数据数量和当前页
+          // this.page = 1
+          this.total = this.filterTableDataEnd.length
+          // 渲染表格,根据值
+          this.currentChangePage(this.filterTableDataEnd)
+        } else {
+          const list = this.filterTableDataEnd
+          this.filterTableDataEnd = []
+          list.forEach((value, index) => {
+            if ((this.value === '已过期' && value.time_out < this.currentTime) || (this.value === '未过期' && value.time_out >= this.currentTime)) {
+              this.filterTableDataEnd.push(value)
+            }
+          })
+          // this.page = 1
+          this.total = this.filterTableDataEnd.length
+          // 渲染表格,根据值
+          this.currentChangePage(this.filterTableDataEnd)
+        }
+      }
+    },
     fetchData() {
       this.listLoading = true
-      axios.get('http://localhost:9200/notice/get?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
+      axios.get('http://118.31.102.1:9200/notice/get?pageNum=' + this.page + '&pageSize=' + this.pageSize).then(response => {
         this.total = response.data.total
         this.tableList = response.data.list
         this.currentTime = this.format(new Date(), 'yyyy-MM-dd')
@@ -283,25 +355,35 @@ export default {
       }
       return fmt
     },
+    getAllData() {
+      axios.get('http://118.31.102.1:9200/notice/getAll').then(res => {
+        this.all = res.data
+        this.currentTime = this.format(new Date(), 'yyyy-MM-dd')
+      }).catch((error) => {
+        Message.error(error.response.data.message)
+      })
+    },
     doFilter() {
+      this.filterTableDataEnd = []
       if (this.searchName === '') {
         this.fetchData()
         // this.$message.warning('查询条件不能为空！')
         return
       }
-      console.log(this.searchName)
-      // 每次手动将数据置空,因为会出现多次点击搜索情况
-      this.filterTableDataEnd = []
-      this.tableList.forEach((value, index) => {
-        if (value.cname) {
-          if (value.cname.indexOf(this.searchName) >= 0) {
+      this.all.forEach((value, index) => {
+        if (value.notice_title) {
+          if (value.notice_title.indexOf(this.searchName) >= 0) {
             this.filterTableDataEnd.push(value)
-            console.log(this.filterTableDataEnd)
+          }
+        }
+        if (value.created_by) {
+          if (value.created_by.indexOf(this.searchName) >= 0) {
+            this.filterTableDataEnd.push(value)
           }
         }
       })
       // 页面数据改变重新统计数据数量和当前页
-      this.page = 1
+      // this.page = 1
       this.total = this.filterTableDataEnd.length
       // 渲染表格,根据值
       this.currentChangePage(this.filterTableDataEnd)
@@ -323,7 +405,7 @@ export default {
       this.delete = Object.assign({}, row)
     },
     submitDelete() {
-      axios.delete('http://localhost:9200/notice/delete?noticeId=' + this.delete.id).then(() => {
+      axios.delete('http://118.31.102.1:9200/notice/delete?noticeId=' + this.delete.id).then(() => {
         this.deleteVisible = false
         this.$notify({
           title: '成功',
@@ -349,7 +431,7 @@ export default {
       this.$refs[formName].validate(valid => {
         if (valid) {
           this.add.created_by = this.name
-          axios.post('http://localhost:9200/notice/add', this.add).then(() => {
+          axios.post('http://118.31.102.1:9200/notice/add', this.add).then(() => {
             this.isShowAddVisible = false
             this.$notify({
               title: '成功',
@@ -371,7 +453,7 @@ export default {
       this.$refs[formName].validate(valid => {
         if (valid) {
           this.update.modified_by = this.name
-          axios.post('http://localhost:9200/notice/update', this.update).then(() => {
+          axios.post('http://118.31.102.1:9200/notice/update', this.update).then(() => {
             this.isShowUpdateVisible = false
             this.$notify({
               title: '成功',
@@ -393,7 +475,7 @@ export default {
       this.$refs[formName].validate(valid => {
         if (valid) {
           this.updateTime.modified_by = this.name
-          axios.post('http://localhost:9200/notice/updateTime', this.updateTime).then(() => {
+          axios.post('http://118.31.102.1:9200/notice/updateTime', this.updateTime).then(() => {
             this.isShowTimeVisible = false
             this.$notify({
               title: '成功',
@@ -401,10 +483,10 @@ export default {
               type: 'success',
               duration: 2000
             })
+            this.currentTime = this.format(new Date(), 'yyyy-MM-dd')
             this.reload()
           }).catch((error) => {
             Message.error(error.response.data.message)
-            this.deleteVisible = false
           })
         } else {
           return false
@@ -419,7 +501,11 @@ export default {
     handleCurrentChange(val) {
       this.page = val
       console.log(this.page)
-      this.fetchData()
+      if (this.filterTableDataEnd.length <= 0) {
+        this.fetchData()
+      } else {
+        this.currentChangePage(this.filterTableDataEnd)
+      }
     },
     currentChangePage(list) {
       let from = (this.page - 1) * this.pageSize
