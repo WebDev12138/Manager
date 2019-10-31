@@ -65,7 +65,7 @@
 
     <!-- 详细信息 -->
     <el-dialog title="详细信息" :visible.sync="isShowEditVisible">
-      <el-form label-width="80px" :model="detail" ref="dataForm" :rules="rules">
+      <el-form label-width="80px" :model="detail" :rules="rules" ref="Form">
         <el-form-item label="ID" hidden>
           <el-input v-model="detail.id"></el-input>
         </el-form-item>
@@ -90,7 +90,7 @@
         <el-form-item label="邮箱">
           <el-input v-model="detail.email" readonly></el-input>
         </el-form-item>
-        <el-form-item label="角色" v-model="detail.roleId" prop="role">
+        <el-form-item label="角色" v-model="detail.roleId" prop="roleId">
          <el-select v-model="detail.roleId" placeholder="角色">
             <el-option v-for="item in status"
                        :label="item.role"
@@ -102,7 +102,7 @@
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="isShowEditVisible = false">取消</el-button>
-        <el-button type="primary" :loading="listLoading" @click="updateData('dataForm')" class="title1">审核通过</el-button>
+        <el-button type="primary" :loading="listLoading" @click="updateData('Form')" class="title1">审核通过</el-button>
       </div>
     </el-dialog>
 
@@ -137,7 +137,7 @@ export default {
   data() {
     return {
       rules: {
-        role: [
+        roleId: [
           { required: true, message: '角色不可为空', trigger: 'blur' }
         ]
       },
