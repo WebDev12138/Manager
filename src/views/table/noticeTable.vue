@@ -259,7 +259,7 @@ export default {
   methods: {
     search() {
       if (this.searchName === '') {
-        if (this.value != '') {
+        if (this.value !== '') {
           this.statusSearch()
         } else {
           this.filterTableDataEnd = []
