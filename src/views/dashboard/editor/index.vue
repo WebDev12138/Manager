@@ -17,8 +17,7 @@
 
 <script>
 import { mapGetters } from 'vuex'
-// import PanThumb from '@/components/PanThumb'
-import PanThumb from '@/components/PanThumb/index.vue'
+import PanThumb from '@/components/PanThumb'
 export default {
   name: 'dashboard-editor',
   data() {

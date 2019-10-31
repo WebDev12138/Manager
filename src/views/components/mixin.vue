@@ -83,7 +83,7 @@
 </template>
 
 <script>
-import PanThumb from '@/components/PanThumb/index.vue'
+import PanThumb from '@/components/PanThumb'
 import MdInput from '@/components/Mdinput'
 import waves from '@/directive/waves/index.js' // 水波纹指令
 
